@@ -3,10 +3,11 @@ name = "galaxy_monkey"
 version = "0.1.0"
 authors = ["Nick Driscoll <nick.a.mavros@gmail.com>"]
 edition = "2018"
+build = "build.rs"
 
 [dependencies]
 
 [dependencies.sdl2]
     version = "0.32"
     default-features = false
-    features = ["bundled"]
+    features = ["bundled", "image"]
