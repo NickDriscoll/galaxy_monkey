@@ -3,6 +3,7 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::GameControllerSubsystem;
 use sdl2::controller::GameController;
+use sdl2::controller::Button;
 use sdl2::rect::Rect;
 use std::i16;
 use std::thread::sleep;
@@ -22,6 +23,8 @@ struct GameState {
 	left_joystick: Vector2<f32>
 }
 
+const DEADZONE: f32 = 0.15;
+
 fn open_controller(css: &GameControllerSubsystem, index: u32) -> Option<GameController> {
 	match css.open(index) {
 		Ok(cont) => {
@@ -33,6 +36,14 @@ fn open_controller(css: &GameControllerSubsystem, index: u32) -> Option<GameCont
 			None
 		}
 	}
+}
+
+fn check_deadzone(value: &f32) -> f32 {
+	//Deadzone check
+	if value > &-DEADZONE && value < &DEADZONE {
+		return 0.0;
+	}
+	*value
 }
 
 fn main() {	
@@ -106,32 +117,25 @@ fn main() {
 					break 'running;
 				}
 				Event::JoyDeviceAdded {which: i, ..} => {
-					println!("This event");
 					if i == 0 {
 						controller = open_controller(&controller_ss, i);	
 					}					
 				}
 				Event::JoyAxisMotion {axis_idx: axid, value: v, ..} => {
-					const DEADZONE: f32 = 0.1;
 					if axid == 0 {
 						game_state.left_joystick.x = v as f32 / i16::MAX as f32;
 
 						//Deadzone check
-						if game_state.left_joystick.x > -DEADZONE && game_state.left_joystick.x < DEADZONE {
-							game_state.left_joystick.x = 0.0;
-						}
+						game_state.left_joystick.x = check_deadzone(&game_state.left_joystick.x);
 					} else if axid == 1 {
 						game_state.left_joystick.y = v as f32 / i16::MAX as f32;
 
 						//Deadzone check
-						if game_state.left_joystick.y > -DEADZONE && game_state.left_joystick.y < DEADZONE {
-							game_state.left_joystick.y = 0.0;
-						}
+						game_state.left_joystick.y = check_deadzone(&game_state.left_joystick.y);
 					}
-					println!("({}, {})", game_state.left_joystick.x, game_state.left_joystick.y);
 				}
-				Event::ControllerButtonDown {button: b, ..} => {
-					println!("You just pressed {}", b.string());
+				Event::ControllerButtonDown {button: Button::Back, ..} => {
+					break 'running;
 				}
 				Event::KeyDown {keycode: Some(key), ..} => {
 					println!("You just pressed {}", key);
