@@ -112,11 +112,23 @@ fn main() {
 					}					
 				}
 				Event::JoyAxisMotion {axis_idx: axid, value: v, ..} => {
+					const DEADZONE: f32 = 0.1;
 					if axid == 0 {
 						game_state.left_joystick.x = v as f32 / i16::MAX as f32;
+
+						//Deadzone check
+						if game_state.left_joystick.x > -DEADZONE && game_state.left_joystick.x < DEADZONE {
+							game_state.left_joystick.x = 0.0;
+						}
 					} else if axid == 1 {
 						game_state.left_joystick.y = v as f32 / i16::MAX as f32;
+
+						//Deadzone check
+						if game_state.left_joystick.y > -DEADZONE && game_state.left_joystick.y < DEADZONE {
+							game_state.left_joystick.y = 0.0;
+						}
 					}
+					println!("({}, {})", game_state.left_joystick.x, game_state.left_joystick.y);
 				}
 				Event::ControllerButtonDown {button: b, ..} => {
 					println!("You just pressed {}", b.string());
@@ -129,7 +141,7 @@ fn main() {
 		}
 
 		//Update the player
-		const PLAYER_SPEED: u32 = 1;
+		const PLAYER_SPEED: u32 = 3;
 		game_state.player.position.x += game_state.left_joystick.x * PLAYER_SPEED as f32;
 		game_state.player.position.y += game_state.left_joystick.y * PLAYER_SPEED as f32;
 
