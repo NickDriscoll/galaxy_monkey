@@ -172,8 +172,24 @@ fn main() {
 				};
 
 				const PROJECTILE_SPEED: f32 = 3.0;
-				let xvel = game_state.right_joystick.x * PROJECTILE_SPEED;
-				let yvel = game_state.right_joystick.y * PROJECTILE_SPEED;
+				let angle = f32::atan(game_state.right_joystick.y / game_state.right_joystick.x);
+
+				let xvel = {
+					if (game_state.right_joystick.x < 0.0) {
+						-(PROJECTILE_SPEED * f32::cos(angle))
+					} else {
+						PROJECTILE_SPEED * f32::cos(angle)
+					}
+				};
+
+				let yvel = {
+					if (game_state.right_joystick.x < 0.0) {
+						-(PROJECTILE_SPEED * f32::sin(angle))
+					} else {
+						PROJECTILE_SPEED * f32::sin(angle)
+					}
+				};
+
 				let velocity = Vector2 {
 					x: xvel,
 					y: yvel
@@ -231,12 +247,11 @@ fn main() {
 		canvas.fill_rect(Rect::new(game_state.player.position.x as i32, game_state.player.position.y as i32, PLAYER_WIDTH, PLAYER_WIDTH)).unwrap();
 
 		//Draw all projectiles
-		//canvas.set_draw_color(Color::RGB(255, 255, 255));
 		for projectile in game_state.friendly_projectiles.iter() {
 			match projectile {
 				Some(p) => {
 					let point = Point::new(p.position.x as i32, p.position.y as i32);
-					canvas.draw_point(point);
+					canvas.draw_point(point).unwrap();
 				}
 				None => {}
 			}
