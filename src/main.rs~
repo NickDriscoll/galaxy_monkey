@@ -65,7 +65,7 @@ fn check_deadzone(mut stick: Vector2<f32>) -> Vector2<f32> {
 	stick
 }
 
-fn main() {
+fn main() {	
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
 
@@ -76,9 +76,6 @@ fn main() {
 
 	//Create primary drawing interface
 	let mut canvas = window.into_canvas().build().unwrap();
-
-	//Create the texture creator
-	let texture_creator = canvas.texture_creator();
 
 	//Create the event_pump
 	let mut event_pump = sdl_context.event_pump().unwrap();
@@ -96,41 +93,13 @@ fn main() {
 		Ok(context) => {
 			context
 		}
-		Err(e) => {
-			panic!("{}", e);
+		Err(_e) => {
+			panic!("Error initing ttf subsystem.");
 		}
 	};
-
+	
 	//Load the font
-	let font = match ttf_context.load_font("fonts/CursedTimerULiL.ttf", 16) {
-		Ok(r) => {
-			r
-		}
-		Err(e) => {
-			panic!("{}", e)
-		}
-	};
-
-	//Create title screen texture
-	let game_title = {
-		let text = "Galaxy Monkey";
-		let color = Color::RGB(255, 255, 255);
-		match font.render(text).solid(color) {
-			Ok(surface) => {
-				match texture_creator.create_texture_from_surface(surface) {
-					Ok(t) => {
-						t
-					}
-					Err(e) => {
-						panic!("{}", e);
-					}
-				}
-			}
-			Err(e) => {
-				panic!("{}", e);
-			}
-		}
-	};
+	let font = ttf_context.load_font("fonts/CursedTimerULiL.ttf", 16);
 
 	//Initialize the game state
 	let mut game_state = {
@@ -187,10 +156,6 @@ fn main() {
 				}
 
 				//Draw the menu
-				let dst = {
-					let query = game_title.texture_query();
-				};
-				//canvas.copy(&game_title, None, dst).unwrap();
 
 			}
 			State::Playing => {
@@ -202,13 +167,13 @@ fn main() {
 						}
 						Event::JoyDeviceAdded {which: i, ..} => {
 							if i == 0 {
-								_controller = open_controller(&controller_ss, i);
-							}
+								_controller = open_controller(&controller_ss, i);	
+							}					
 						}
 						Event::ControllerAxisMotion {axis: ax, value: v, ..} => {
 							match ax {
 								Axis::LeftX => {
-									game_state.left_joystick.x = v as f32 / i16::MAX as f32;
+									game_state.left_joystick.x = v as f32 / i16::MAX as f32;						
 								}
 								Axis::LeftY => {
 									game_state.left_joystick.y = v as f32 / i16::MAX as f32;
@@ -351,6 +316,6 @@ fn main() {
 
 		if time_delta < 8 {
 			sleep(Duration::from_millis((8 - time_delta) as u64));
-		}
+		}		
 	}
 }
