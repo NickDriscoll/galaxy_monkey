@@ -7,6 +7,7 @@ use sdl2::controller::Button;
 use sdl2::rect::Point;
 use sdl2::rect::Rect;
 use sdl2::controller::Axis;
+use sdl2::ttf;
 use std::i16;
 use std::thread::sleep;
 use std::time::Duration;
@@ -29,9 +30,15 @@ struct Projectile {
 
 struct GameState {
 	player: Spaceship,
+	state: State,
 	left_joystick: Vector2<f32>,
 	right_joystick: Vector2<f32>,
 	friendly_projectiles: Vec<Option<Projectile>>
+}
+
+enum State {
+	Playing,
+	StartMenu
 }
 
 const DEADZONE: f32 = 0.15;
@@ -81,6 +88,19 @@ fn main() {
 
 	let mut _controller = open_controller(&controller_ss, 0);
 
+	//Init the ttf subsystem
+	let ttf_context = match ttf::init() {
+		Ok(context) => {
+			context
+		}
+		Err(_e) => {
+			panic!("Error initing ttf subsystem.");
+		}
+	};
+	
+	//Load the font
+	let font = ttf_context.load_font("fonts/CursedTimerULiL.ttf", 16);
+
 	//Initialize the game state
 	let mut game_state = {
 		let left_joystick = Vector2 {
@@ -107,6 +127,7 @@ fn main() {
 
 		GameState {
 			player,
+			state: State::Playing,
 			left_joystick,
 			right_joystick,
 			friendly_projectiles
@@ -120,140 +141,171 @@ fn main() {
 		let ticks = timer_ss.ticks();
 		let time_delta = ticks - old_ticks;
 
-		//Process events
-		for event in event_pump.poll_iter() {
-			match event {
-				Event::Quit {..} => {
-					break 'running;
-				}
-				Event::JoyDeviceAdded {which: i, ..} => {
-					if i == 0 {
-						_controller = open_controller(&controller_ss, i);	
-					}					
-				}
-				Event::ControllerAxisMotion {axis: ax, value: v, ..} => {
-					match ax {
-						Axis::LeftX => {
-							game_state.left_joystick.x = v as f32 / i16::MAX as f32;						
+		match game_state.state {
+			State::StartMenu => {
+				for event in event_pump.poll_iter() {
+					match event {
+						Event::Quit {..} => {
+							break 'running;
 						}
-						Axis::LeftY => {
-							game_state.left_joystick.y = v as f32 / i16::MAX as f32;
-						}
-						Axis::RightX => {
-							game_state.right_joystick.x = v as f32 / i16::MAX as f32;
-						}
-						Axis::RightY => {
-							game_state.right_joystick.y = v as f32 / i16::MAX as f32;
+						Event::ControllerButtonDown {button: Button::Start, ..} => {
+							game_state.state = State::Playing;
 						}
 						_ => {}
 					}
-					game_state.left_joystick = check_deadzone(game_state.left_joystick);
-					game_state.right_joystick = check_deadzone(game_state.right_joystick);
 				}
-				Event::ControllerButtonDown {button: Button::Back, ..} => {
-					break 'running;
-				}
-				Event::KeyDown {keycode: Some(key), ..} => {
-					println!("You just pressed {}", key);
-				}
-				_ => {}
+
+				//Draw the menu
+
 			}
-		}
-
-		//If the right stick is not neutral, fire a projectile
-		if game_state.right_joystick.x != 0.0 || game_state.right_joystick.y != 0.0 {
-			//Construct this new projectile
-			let projectile = {
-				let xpos = game_state.player.position.x + (PLAYER_WIDTH / 2) as f32;
-				let ypos = game_state.player.position.y + (PLAYER_WIDTH / 2) as f32;
-				let position = Vector2 {
-					x: xpos,
-					y: ypos
-				};
-
-				const PROJECTILE_SPEED: f32 = 3.0;
-				let angle = f32::atan(game_state.right_joystick.y / game_state.right_joystick.x);
-
-				let xvel = {
-					if (game_state.right_joystick.x < 0.0) {
-						-(PROJECTILE_SPEED * f32::cos(angle))
-					} else {
-						PROJECTILE_SPEED * f32::cos(angle)
+			State::Playing => {
+				//Process events
+				for event in event_pump.poll_iter() {
+					match event {
+						Event::Quit {..} => {
+							break 'running;
+						}
+						Event::JoyDeviceAdded {which: i, ..} => {
+							if i == 0 {
+								_controller = open_controller(&controller_ss, i);	
+							}					
+						}
+						Event::ControllerAxisMotion {axis: ax, value: v, ..} => {
+							match ax {
+								Axis::LeftX => {
+									game_state.left_joystick.x = v as f32 / i16::MAX as f32;						
+								}
+								Axis::LeftY => {
+									game_state.left_joystick.y = v as f32 / i16::MAX as f32;
+								}
+								Axis::RightX => {
+									game_state.right_joystick.x = v as f32 / i16::MAX as f32;
+								}
+								Axis::RightY => {
+									game_state.right_joystick.y = v as f32 / i16::MAX as f32;
+								}
+								_ => {}
+							}
+							game_state.left_joystick = check_deadzone(game_state.left_joystick);
+							game_state.right_joystick = check_deadzone(game_state.right_joystick);
+						}
+						Event::ControllerButtonDown {button: Button::Back, ..} => {
+							break 'running;
+						}
+						Event::KeyDown {keycode: Some(key), ..} => {
+							println!("You just pressed {}", key);
+						}
+						_ => {}
 					}
-				};
+				}
 
-				let yvel = {
-					if (game_state.right_joystick.x < 0.0) {
-						-(PROJECTILE_SPEED * f32::sin(angle))
-					} else {
-						PROJECTILE_SPEED * f32::sin(angle)
+				//If the right stick is not neutral, fire a projectile
+				if game_state.right_joystick.x != 0.0 || game_state.right_joystick.y != 0.0 {
+					//Construct this new projectile
+					let projectile = {
+						let xpos = game_state.player.position.x + (PLAYER_WIDTH / 2) as f32;
+						let ypos = game_state.player.position.y + (PLAYER_WIDTH / 2) as f32;
+						let position = Vector2 {
+							x: xpos,
+							y: ypos
+						};
+
+						const PROJECTILE_SPEED: f32 = 10.0;
+						let angle = f32::atan(game_state.right_joystick.y / game_state.right_joystick.x);
+
+						let xvel = {
+							if game_state.right_joystick.x < 0.0 {
+								-(PROJECTILE_SPEED * f32::cos(angle))
+							} else {
+								PROJECTILE_SPEED * f32::cos(angle)
+							}
+						};
+
+						let yvel = {
+							if game_state.right_joystick.x < 0.0 {
+								-(PROJECTILE_SPEED * f32::sin(angle))
+							} else {
+								PROJECTILE_SPEED * f32::sin(angle)
+							}
+						};
+
+						let velocity = Vector2 {
+							x: xvel,
+							y: yvel
+						};
+
+						Projectile {
+							position,
+							velocity
+						}
+					};
+
+					//Check the friendly projectile Vec for an empty slot, push otherwise
+					let mut index: Option<usize> = None;
+					for (i, p) in game_state.friendly_projectiles.iter().enumerate() {
+						match p {
+							None => {
+								index = Some(i);
+							}
+							_ => {}
+						}
 					}
-				};
 
-				let velocity = Vector2 {
-					x: xvel,
-					y: yvel
-				};
-
-				Projectile {
-					position,
-					velocity
-				}
-			};
-
-			//Check the friendly projectile Vec for an empty slot, push otherwise
-			let mut index: Option<usize> = None;
-			for (i, p) in game_state.friendly_projectiles.iter().enumerate() {
-				match p {
-					None => {
-						index = Some(i);
+					match index {
+						Some(i) => {
+							game_state.friendly_projectiles[i] = Some(projectile);
+						}
+						None => {
+							game_state.friendly_projectiles.push(Some(projectile));
+						}
 					}
-					_ => {}
 				}
-			}
 
-			match index {
-				Some(i) => {
-					game_state.friendly_projectiles[i] = Some(projectile);
+				//Update the player
+				const PLAYER_SPEED: f32 = 3.0;
+				game_state.player.position.x += game_state.left_joystick.x * PLAYER_SPEED;
+				game_state.player.position.y += game_state.left_joystick.y * PLAYER_SPEED;
+
+				//Update all projectiles
+				let mut projectiles_to_destroy = Vec::new();
+				for (i, projectile) in game_state.friendly_projectiles.iter_mut().enumerate() {
+					match projectile {
+						Some(p) => {
+							if p.position.x < 0.0 || p.position.x > SCREEN_WIDTH as f32 ||
+							   p.position.y < 0.0 || p.position.y > SCREEN_HEIGHT as f32 {
+								projectiles_to_destroy.push(i);
+							}
+
+							p.position.x += p.velocity.x;
+							p.position.y += p.velocity.y;
+						}
+						None => {}
+					}
 				}
-				None => {
-					game_state.friendly_projectiles.push(Some(projectile));
+
+				//Set all offscreen projectiles to None
+				for i in projectiles_to_destroy {
+					game_state.friendly_projectiles[i] = None;
 				}
-			}
-		}
 
-		//Update the player
-		const PLAYER_SPEED: f32 = 3.0;
-		game_state.player.position.x += game_state.left_joystick.x * PLAYER_SPEED;
-		game_state.player.position.y += game_state.left_joystick.y * PLAYER_SPEED;
+				//Clear the canvas
+				canvas.set_draw_color(Color::RGB(0, 0, 0));
+				canvas.clear();
 
-		//Update all projectiles
-		for projectile in game_state.friendly_projectiles.iter_mut() {
-			match projectile {
-				Some(p) => {
-					p.position.x += p.velocity.x;
-					p.position.y += p.velocity.y;
+				//Draw the spaceship
+				canvas.set_draw_color(Color::RGB(150, 150, 150));
+				canvas.fill_rect(Rect::new(game_state.player.position.x as i32, game_state.player.position.y as i32, PLAYER_WIDTH, PLAYER_WIDTH)).unwrap();
+
+				//Draw all projectiles
+				for projectile in game_state.friendly_projectiles.iter() {
+					match projectile {
+						Some(p) => {
+							let point = Point::new(p.position.x as i32, p.position.y as i32);
+							canvas.draw_point(point).unwrap();
+						}
+						None => {}
+					}
 				}
-				None => {}
-			}
-		}
-
-		//Clear the canvas		
-		canvas.set_draw_color(Color::RGB(0, 0, 0));
-		canvas.clear();
-
-		//Draw the spaceship
-		canvas.set_draw_color(Color::RGB(150, 150, 150));
-		canvas.fill_rect(Rect::new(game_state.player.position.x as i32, game_state.player.position.y as i32, PLAYER_WIDTH, PLAYER_WIDTH)).unwrap();
-
-		//Draw all projectiles
-		for projectile in game_state.friendly_projectiles.iter() {
-			match projectile {
-				Some(p) => {
-					let point = Point::new(p.position.x as i32, p.position.y as i32);
-					canvas.draw_point(point).unwrap();
-				}
-				None => {}
 			}
 		}
 

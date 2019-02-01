@@ -10,4 +10,4 @@ build = "build.rs"
 [dependencies.sdl2]
     version = "0.32"
     default-features = false
-    features = ["bundled", "image"]
+    features = ["bundled", "image", "ttf"]
