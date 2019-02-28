@@ -4,10 +4,14 @@ use sdl2::event::Event;
 use sdl2::GameControllerSubsystem;
 use sdl2::controller::GameController;
 use sdl2::controller::Button;
+use sdl2::render::Texture;
+use sdl2::render::TextureCreator;
 use sdl2::rect::Point;
 use sdl2::rect::Rect;
 use sdl2::controller::Axis;
 use sdl2::ttf;
+use sdl2::ttf::Font;
+use sdl2::video::WindowContext;
 use std::i16;
 use std::thread::sleep;
 use std::time::Duration;
@@ -65,6 +69,36 @@ fn check_deadzone(mut stick: Vector2<f32>) -> Vector2<f32> {
 	stick
 }
 
+fn text_texture<'a>(text: &str, texture_creator: &'a TextureCreator<WindowContext>, font: &Font) -> Texture<'a> {
+	let color = Color::RGB(0, 255, 0);
+	match font.render(text).solid(color) {
+		Ok(surface) => {
+			match texture_creator.create_texture_from_surface(surface) {
+				Ok(t) => {
+					t
+				}
+				Err(e) => {
+					panic!("{}", e);
+				}
+			}
+		}
+		Err(e) => {
+			panic!("{}", e);
+		}
+	}
+}
+
+fn obtain_result<T, E: std::fmt::Display>(res: Result<T, E>) -> T {
+	match res {
+		Ok(r) => {
+			r
+		}
+		Err(e) => {
+			panic!("{}", e);
+		}
+	}
+}
+
 fn main() {
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
@@ -92,45 +126,16 @@ fn main() {
 	let mut _controller = open_controller(&controller_ss, 0);
 
 	//Init the ttf subsystem
-	let ttf_context = match ttf::init() {
-		Ok(context) => {
-			context
-		}
-		Err(e) => {
-			panic!("{}", e);
-		}
-	};
+	let ttf_context = obtain_result(ttf::init());
 
 	//Load the font
-	let font = match ttf_context.load_font("fonts/CursedTimerULiL.ttf", 16) {
-		Ok(r) => {
-			r
-		}
-		Err(e) => {
-			panic!("{}", e)
-		}
-	};
+	let font = obtain_result(ttf_context.load_font("fonts/CursedTimerULiL.ttf", 64));
 
 	//Create title screen texture
-	let game_title = {
-		let text = "Galaxy Monkey";
-		let color = Color::RGB(255, 255, 255);
-		match font.render(text).solid(color) {
-			Ok(surface) => {
-				match texture_creator.create_texture_from_surface(surface) {
-					Ok(t) => {
-						t
-					}
-					Err(e) => {
-						panic!("{}", e);
-					}
-				}
-			}
-			Err(e) => {
-				panic!("{}", e);
-			}
-		}
-	};
+	let game_title = text_texture("Galaxy Monkey", &texture_creator, &font);
+
+	//Create press start text
+	let press_start_text = text_texture("Press Start", &texture_creator, &font);
 
 	//Initialize the game state
 	let mut game_state = {
@@ -145,9 +150,11 @@ fn main() {
 		};
 
 		let player = {
+			let x = (SCREEN_WIDTH / 2 - PLAYER_WIDTH) as f32;
+			let y = (SCREEN_HEIGHT / 2 - PLAYER_WIDTH) as f32;
 			let position = Vector2 {
-				x: 200.0,
-				y: 200.0
+				x,
+				y
 			};
 			Spaceship {
 				position
@@ -158,7 +165,7 @@ fn main() {
 
 		GameState {
 			player,
-			state: State::Playing,
+			state: State::StartMenu,
 			left_joystick,
 			right_joystick,
 			friendly_projectiles
@@ -166,6 +173,10 @@ fn main() {
 	};
 
 	let mut old_ticks = 0;
+
+	//Timer variable for making "Press Start" flash
+	let mut press_start_timer = 0;
+	let mut displaying = true;
 
 	'running: loop {
 		//Get milliseconds since last frame
@@ -176,7 +187,8 @@ fn main() {
 			State::StartMenu => {
 				for event in event_pump.poll_iter() {
 					match event {
-						Event::Quit {..} => {
+						Event::Quit {..} |
+						Event::ControllerButtonDown {button: Button::Back, ..} => {
 							break 'running;
 						}
 						Event::ControllerButtonDown {button: Button::Start, ..} => {
@@ -186,12 +198,35 @@ fn main() {
 					}
 				}
 
-				//Draw the menu
-				let dst = {
-					let query = game_title.texture_query();
-				};
-				//canvas.copy(&game_title, None, dst).unwrap();
+				//Clear the screen
+				canvas.set_draw_color(Color::RGB(0, 0, 0));
+				canvas.clear();
 
+				//Draw the title
+				let dst = {
+					let query = game_title.query();
+					let xpos = (SCREEN_WIDTH / 2 - query.width / 2) as i32;
+					let ypos = (SCREEN_HEIGHT / 2 - query.height / 2 - 200) as i32;
+					Rect::new(xpos, ypos, query.width, query.height)
+				};
+				canvas.copy(&game_title, None, dst).unwrap();
+
+				//Draw press start
+				const INTERVAL: u32 = 500;
+				if ticks - press_start_timer > INTERVAL {
+					displaying = !displaying;
+					press_start_timer = ticks;
+				}
+
+				if displaying {
+					let dst = {
+						let query = press_start_text.query();
+						let xpos = (SCREEN_WIDTH / 2 - query.width / 2) as i32;
+						let ypos = (SCREEN_HEIGHT / 2 - query.height / 2) as i32;
+						Rect::new(xpos, ypos, query.width, query.height)
+					};
+					canvas.copy(&press_start_text, None, dst).unwrap();
+				}
 			}
 			State::Playing => {
 				//Process events
