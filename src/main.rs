@@ -4,6 +4,7 @@ use sdl2::event::Event;
 use sdl2::GameControllerSubsystem;
 use sdl2::controller::GameController;
 use sdl2::controller::Button;
+use sdl2::render::Canvas;
 use sdl2::render::Texture;
 use sdl2::render::TextureCreator;
 use sdl2::rect::Point;
@@ -11,6 +12,7 @@ use sdl2::rect::Rect;
 use sdl2::controller::Axis;
 use sdl2::ttf;
 use sdl2::ttf::Font;
+use sdl2::video::Window;
 use sdl2::video::WindowContext;
 use std::i16;
 use std::thread::sleep;
@@ -47,6 +49,8 @@ enum State {
 
 const DEADZONE: f32 = 0.15;
 const PLAYER_WIDTH: u32 = 50;
+const SCREEN_WIDTH: u32 = 1280;
+const SCREEN_HEIGHT: u32 = 720;
 
 fn open_controller(css: &GameControllerSubsystem, index: u32) -> Option<GameController> {
 	match css.open(index) {
@@ -99,13 +103,22 @@ fn obtain_result<T, E: std::fmt::Display>(res: Result<T, E>) -> T {
 	}
 }
 
+fn draw_centered_text(canvas: &mut Canvas<Window>, texture: &Texture, y_offset: i32) {
+	//Draw the title
+	let dst = {
+		let query = texture.query();
+		let xpos = (SCREEN_WIDTH / 2 - query.width / 2) as i32;
+		let ypos = (SCREEN_HEIGHT / 2 - query.height / 2) as i32 + y_offset;
+		Rect::new(xpos, ypos, query.width, query.height)
+	};
+	canvas.copy(texture, None, dst).unwrap();
+}
+
 fn main() {
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
 
 	//Create the actual window
-	const SCREEN_WIDTH: u32 = 1280;
-	const SCREEN_HEIGHT: u32 = 720;
 	let window = video_subsystem.window("Galaxy Monkey", SCREEN_WIDTH, SCREEN_HEIGHT).position_centered().build().unwrap();
 
 	//Create primary drawing interface
@@ -136,6 +149,11 @@ fn main() {
 
 	//Create press start text
 	let press_start_text = text_texture("Press Start", &texture_creator, &font);
+
+	//Timer variable for making "Press Start" flash
+	let mut press_start_timer = 0;
+	let mut displaying = true;
+	let mut press_start_position: i32 = 150;
 
 	//Initialize the game state
 	let mut game_state = {
@@ -174,10 +192,6 @@ fn main() {
 
 	let mut old_ticks = 0;
 
-	//Timer variable for making "Press Start" flash
-	let mut press_start_timer = 0;
-	let mut displaying = true;
-
 	'running: loop {
 		//Get milliseconds since last frame
 		let ticks = timer_ss.ticks();
@@ -185,6 +199,7 @@ fn main() {
 
 		match game_state.state {
 			State::StartMenu => {
+
 				for event in event_pump.poll_iter() {
 					match event {
 						Event::Quit {..} |
@@ -193,6 +208,14 @@ fn main() {
 						}
 						Event::ControllerButtonDown {button: Button::Start, ..} => {
 							game_state.state = State::Playing;
+						}
+						Event::JoyDeviceAdded {which: i, ..} => {
+							if i == 0 {
+								_controller = open_controller(&controller_ss, i);
+							}
+						}
+						Event::MouseWheel {y: y, ..} => {
+							press_start_position -= y * 30;
 						}
 						_ => {}
 					}
@@ -203,13 +226,7 @@ fn main() {
 				canvas.clear();
 
 				//Draw the title
-				let dst = {
-					let query = game_title.query();
-					let xpos = (SCREEN_WIDTH / 2 - query.width / 2) as i32;
-					let ypos = (SCREEN_HEIGHT / 2 - query.height / 2 - 200) as i32;
-					Rect::new(xpos, ypos, query.width, query.height)
-				};
-				canvas.copy(&game_title, None, dst).unwrap();
+				draw_centered_text(&mut canvas, &game_title, -200);
 
 				//Draw press start
 				const INTERVAL: u32 = 500;
@@ -219,13 +236,7 @@ fn main() {
 				}
 
 				if displaying {
-					let dst = {
-						let query = press_start_text.query();
-						let xpos = (SCREEN_WIDTH / 2 - query.width / 2) as i32;
-						let ypos = (SCREEN_HEIGHT / 2 - query.height / 2) as i32;
-						Rect::new(xpos, ypos, query.width, query.height)
-					};
-					canvas.copy(&press_start_text, None, dst).unwrap();
+					draw_centered_text(&mut canvas, &press_start_text, press_start_position);
 				}
 			}
 			State::Playing => {
