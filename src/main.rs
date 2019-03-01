@@ -24,6 +24,7 @@ struct Vector2<T> {
 	y: T
 }
 
+#[derive(Debug)]
 struct Spaceship {
 	position: Vector2<f32>
 }
@@ -39,7 +40,8 @@ struct GameState {
 	state: State,
 	left_joystick: Vector2<f32>,
 	right_joystick: Vector2<f32>,
-	friendly_projectiles: Vec<Option<Projectile>>
+	friendly_projectiles: Vec<Option<Projectile>>,
+	enemies: Vec<Option<Spaceship>>
 }
 
 enum State {
@@ -47,7 +49,7 @@ enum State {
 	StartMenu
 }
 
-const DEADZONE: f32 = 0.15;
+const DEADZONE: f32 = 0.20;
 const PLAYER_WIDTH: u32 = 50;
 const SCREEN_WIDTH: u32 = 1280;
 const SCREEN_HEIGHT: u32 = 720;
@@ -112,6 +114,12 @@ fn draw_centered_text(canvas: &mut Canvas<Window>, texture: &Texture, y_offset: 
 		Rect::new(xpos, ypos, query.width, query.height)
 	};
 	canvas.copy(texture, None, dst).unwrap();
+}
+
+fn delete_marked_entities<T>(optionvec: &mut Vec<Option<T>>, marks: Vec<usize>) {
+	for i in marks {
+		optionvec[i] = None;
+	}
 }
 
 fn main() {
@@ -180,13 +188,15 @@ fn main() {
 		};
 
 		let friendly_projectiles = Vec::new();
+		let enemies = Vec::new();
 
 		GameState {
 			player,
 			state: State::StartMenu,
 			left_joystick,
 			right_joystick,
-			friendly_projectiles
+			friendly_projectiles,
+			enemies
 		}
 	};
 
@@ -199,7 +209,6 @@ fn main() {
 
 		match game_state.state {
 			State::StartMenu => {
-
 				for event in event_pump.poll_iter() {
 					match event {
 						Event::Quit {..} |
@@ -214,7 +223,7 @@ fn main() {
 								_controller = open_controller(&controller_ss, i);
 							}
 						}
-						Event::MouseWheel {y: y, ..} => {
+						Event::MouseWheel {y, ..} => {
 							press_start_position -= y * 30;
 						}
 						_ => {}
@@ -280,6 +289,36 @@ fn main() {
 					}
 				}
 
+				println!("{:?}", game_state.enemies);
+
+				//Check if enemies option-vec is empty
+				let enemies_is_empty = {
+					let mut res = true;
+					for enemy in game_state.enemies.iter() {
+						if let Some(_e) = enemy {
+							res = false;
+							break;
+						}
+					}
+					res
+				};
+
+				if enemies_is_empty {
+					let new_enemy = {
+						let position = Vector2 {
+							x: 0.0,
+							y: 30.0
+						};
+
+						let ss = Spaceship {
+							position
+						};
+						
+						Some(ss)
+					};
+					game_state.enemies.push(new_enemy);
+				}
+
 				//If the right stick is not neutral, fire a projectile
 				if game_state.right_joystick.x != 0.0 || game_state.right_joystick.y != 0.0 {
 					//Construct this new projectile
@@ -322,13 +361,10 @@ fn main() {
 					};
 
 					//Check the friendly projectile Vec for an empty slot, push otherwise
-					let mut index: Option<usize> = None;
+					let mut index = None;
 					for (i, p) in game_state.friendly_projectiles.iter().enumerate() {
-						match p {
-							None => {
-								index = Some(i);
-							}
-							_ => {}
+						if let None = p {
+							index = Some(i);
 						}
 					}
 
@@ -347,27 +383,37 @@ fn main() {
 				game_state.player.position.x += game_state.left_joystick.x * PLAYER_SPEED;
 				game_state.player.position.y += game_state.left_joystick.y * PLAYER_SPEED;
 
+				//Update all enemies
+				let mut enemies_to_destroy = Vec::new();
+				for (i, enemy) in game_state.enemies.iter_mut().enumerate() {
+					if let Some(e) = enemy {
+						if e.position.x > SCREEN_WIDTH as f32 {
+							enemies_to_destroy.push(i);
+						}
+
+						e.position.x += 1.0;
+					}
+				}
+
+				//Set all offscreen enemies to None
+				delete_marked_entities(&mut game_state.enemies, enemies_to_destroy);
+
 				//Update all projectiles
 				let mut projectiles_to_destroy = Vec::new();
 				for (i, projectile) in game_state.friendly_projectiles.iter_mut().enumerate() {
-					match projectile {
-						Some(p) => {
-							if p.position.x < 0.0 || p.position.x > SCREEN_WIDTH as f32 ||
-							   p.position.y < 0.0 || p.position.y > SCREEN_HEIGHT as f32 {
-								projectiles_to_destroy.push(i);
-							}
-
-							p.position.x += p.velocity.x;
-							p.position.y += p.velocity.y;
+					if let Some(p) = projectile {
+						if p.position.x < 0.0 || p.position.x > SCREEN_WIDTH as f32 ||
+						   p.position.y < 0.0 || p.position.y > SCREEN_HEIGHT as f32 {
+							projectiles_to_destroy.push(i);
 						}
-						None => {}
+
+						p.position.x += p.velocity.x;
+						p.position.y += p.velocity.y;
 					}
 				}
 
 				//Set all offscreen projectiles to None
-				for i in projectiles_to_destroy {
-					game_state.friendly_projectiles[i] = None;
-				}
+				delete_marked_entities(&mut game_state.friendly_projectiles, projectiles_to_destroy);
 
 				//Clear the canvas
 				canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -377,14 +423,19 @@ fn main() {
 				canvas.set_draw_color(Color::RGB(150, 150, 150));
 				canvas.fill_rect(Rect::new(game_state.player.position.x as i32, game_state.player.position.y as i32, PLAYER_WIDTH, PLAYER_WIDTH)).unwrap();
 
+				//Draw all enemies
+				canvas.set_draw_color(Color::RGB(50, 120, 0));
+				for enemy in game_state.enemies.iter() {
+					if let Some(e) = enemy {
+						canvas.fill_rect(Rect::new(e.position.x as i32, e.position.y as i32, PLAYER_WIDTH, PLAYER_WIDTH)).unwrap();
+					}
+				}
+
 				//Draw all projectiles
 				for projectile in game_state.friendly_projectiles.iter() {
-					match projectile {
-						Some(p) => {
-							let point = Point::new(p.position.x as i32, p.position.y as i32);
-							canvas.draw_point(point).unwrap();
-						}
-						None => {}
+					if let Some(p) = projectile {
+						let point = Point::new(p.position.x as i32, p.position.y as i32);
+						canvas.draw_point(point).unwrap();
 					}
 				}
 			}
