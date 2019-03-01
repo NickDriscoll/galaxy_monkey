@@ -17,37 +17,13 @@ use sdl2::video::WindowContext;
 use std::i16;
 use std::thread::sleep;
 use std::time::Duration;
+use crate::structs::Vector2;
+use crate::structs::Spaceship;
+use crate::structs::Projectile;
+use crate::structs::GameState;
+use crate::structs::State;
 
-#[derive(Debug)]
-struct Vector2<T> {
-	x: T,
-	y: T
-}
-
-#[derive(Debug)]
-struct Spaceship {
-	position: Vector2<f32>
-}
-
-#[derive(Debug)]
-struct Projectile {
-	position: Vector2<f32>,
-	velocity: Vector2<f32>
-}
-
-struct GameState {
-	player: Spaceship,
-	state: State,
-	left_joystick: Vector2<f32>,
-	right_joystick: Vector2<f32>,
-	friendly_projectiles: Vec<Option<Projectile>>,
-	enemies: Vec<Option<Spaceship>>
-}
-
-enum State {
-	Playing,
-	StartMenu
-}
+mod structs;
 
 const DEADZONE: f32 = 0.20;
 const PLAYER_WIDTH: u32 = 50;
