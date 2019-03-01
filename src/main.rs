@@ -24,6 +24,7 @@ use crate::structs::GameState;
 use crate::structs::State;
 
 mod structs;
+//mod subroutines;
 
 const DEADZONE: f32 = 0.20;
 const PLAYER_WIDTH: u32 = 50;
@@ -95,6 +96,24 @@ fn draw_centered_text(canvas: &mut Canvas<Window>, texture: &Texture, y_offset: 
 fn delete_marked_entities<T>(optionvec: &mut Vec<Option<T>>, marks: Vec<usize>) {
 	for i in marks {
 		optionvec[i] = None;
+	}
+}
+
+fn insert_into_option_vec<T>(optionvec: &mut Vec<Option<T>>, item: T) {
+	let mut index = None;
+	for (i, p) in optionvec.iter().enumerate() {
+		if let None = p {
+			index = Some(i);
+		}
+	}
+
+	match index {
+		Some(i) => {
+			optionvec[i] = Some(item);
+		}
+		None => {
+			optionvec.push(Some(item));
+		}
 	}
 }
 
@@ -286,13 +305,13 @@ fn main() {
 							y: 30.0
 						};
 
-						let ss = Spaceship {
+						Spaceship {
 							position
-						};
-						
-						Some(ss)
+						}
 					};
-					game_state.enemies.push(new_enemy);
+
+					//Insert enemy into vec
+					insert_into_option_vec(&mut game_state.enemies, new_enemy);
 				}
 
 				//If the right stick is not neutral, fire a projectile
@@ -336,22 +355,8 @@ fn main() {
 						}
 					};
 
-					//Check the friendly projectile Vec for an empty slot, push otherwise
-					let mut index = None;
-					for (i, p) in game_state.friendly_projectiles.iter().enumerate() {
-						if let None = p {
-							index = Some(i);
-						}
-					}
-
-					match index {
-						Some(i) => {
-							game_state.friendly_projectiles[i] = Some(projectile);
-						}
-						None => {
-							game_state.friendly_projectiles.push(Some(projectile));
-						}
-					}
+					//Insert new projectile into vec
+					insert_into_option_vec(&mut game_state.friendly_projectiles, projectile);
 				}
 
 				//Update the player
