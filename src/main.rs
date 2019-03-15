@@ -140,7 +140,7 @@ fn main() {
 	let mut timer_ss = sdl_context.timer().unwrap();
 
 	//Attempt to open the controller
-	let mut _controller = open_controller(&controller_ss, 0);
+	let mut _controllers: [Option<GameController>; 4] = [None, None, None, None];
 
 	//Init the ttf subsystem
 	let ttf_context = obtain_result(ttf::init());
@@ -215,9 +215,7 @@ fn main() {
 							game_state.state = State::Playing;
 						}
 						Event::JoyDeviceAdded {which: i, ..} => {
-							if i == 0 {
-								_controller = open_controller(&controller_ss, i);
-							}
+							_controllers[i as usize] = open_controller(&controller_ss, i);
 						}
 						Event::MouseWheel {y, ..} => {
 							press_start_position -= y * 30;
@@ -252,9 +250,7 @@ fn main() {
 							break 'running;
 						}
 						Event::JoyDeviceAdded {which: i, ..} => {
-							if i == 0 {
-								_controller = open_controller(&controller_ss, i);
-							}
+							_controllers[i as usize] = open_controller(&controller_ss, i);
 						}
 						Event::ControllerAxisMotion {axis: ax, value: v, ..} => {
 							match ax {
