@@ -139,6 +139,7 @@ fn main() {
 	//Init the timer subsystem
 	let mut timer_ss = sdl_context.timer().unwrap();
 
+	//Attempt to open the controller
 	let mut _controller = open_controller(&controller_ss, 0);
 
 	//Init the ttf subsystem
@@ -152,11 +153,11 @@ fn main() {
 
 	//Create press start text
 	let press_start_text = text_texture("Press Start", &texture_creator, &font);
+	let mut press_start_position: i32 = 150;
 
 	//Timer variable for making "Press Start" flash
 	let mut press_start_timer = 0;
 	let mut displaying = true;
-	let mut press_start_position: i32 = 150;
 
 	//Initialize the game state
 	let mut game_state = {
@@ -284,20 +285,16 @@ fn main() {
 					}
 				}
 
-				println!("{:?}", game_state.enemies);
-
 				//Check if enemies option-vec is empty
-				let enemies_is_empty = {
-					let mut res = true;
-					for enemy in game_state.enemies.iter() {
-						if let Some(_e) = enemy {
-							res = false;
-							break;
-						}
+				let mut enemies_is_empty = true;
+				for enemy in game_state.enemies.iter() {
+					if let Some(_e) = enemy {
+						enemies_is_empty = false;
+						break;
 					}
-					res
-				};
+				}
 
+				//This will probably become the trigger for advancing rounds
 				if enemies_is_empty {
 					let new_enemy = {
 						let position = Vector2 {
@@ -413,6 +410,7 @@ fn main() {
 				}
 
 				//Draw all projectiles
+				canvas.set_draw_color(Color::RGB(150, 150, 150));
 				for projectile in game_state.friendly_projectiles.iter() {
 					if let Some(p) = projectile {
 						let point = Point::new(p.position.x as i32, p.position.y as i32);
