@@ -117,6 +117,17 @@ fn insert_into_option_vec<T>(optionvec: &mut Vec<Option<T>>, item: T) {
 	}
 }
 
+fn clamp<T: std::cmp::PartialOrd>(value: T, lower_bound: T, upper_bound: T) -> T{
+	let mut clamped_value = value;
+	if clamped_value < lower_bound {
+		clamped_value = lower_bound;
+	}
+	if clamped_value > upper_bound {
+		clamped_value = upper_bound;
+	}
+	clamped_value
+}
+
 fn main() {
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
@@ -292,6 +303,7 @@ fn main() {
 
 				//This will probably become the trigger for advancing rounds
 				if enemies_is_empty {
+					/*
 					let new_enemy = {
 						let position = Vector2 {
 							x: 0.0,
@@ -305,6 +317,7 @@ fn main() {
 
 					//Insert enemy into vec
 					insert_into_option_vec(&mut game_state.enemies, new_enemy);
+					*/
 				}
 
 				//If the right stick is not neutral, fire a projectile
@@ -356,6 +369,9 @@ fn main() {
 				const PLAYER_SPEED: f32 = 3.0;
 				game_state.player.position.x += game_state.left_joystick.x * PLAYER_SPEED;
 				game_state.player.position.y += game_state.left_joystick.y * PLAYER_SPEED;
+
+				game_state.player.position.x = clamp(game_state.player.position.x, 0.0, (SCREEN_WIDTH - PLAYER_WIDTH) as f32);
+				game_state.player.position.y = clamp(game_state.player.position.y, 0.0, (SCREEN_HEIGHT - PLAYER_WIDTH) as f32);
 
 				//Update all enemies
 				let mut enemies_to_destroy = Vec::new();
