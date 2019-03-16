@@ -106,7 +106,7 @@ fn insert_into_option_vec<T>(optionvec: &mut Vec<Option<T>>, item: T) {
 			index = Some(i);
 		}
 	}
-
+ 
 	match index {
 		Some(i) => {
 			optionvec[i] = Some(item);
@@ -150,7 +150,7 @@ fn main() {
 	//Init the timer subsystem
 	let mut timer_ss = sdl_context.timer().unwrap();
 
-	//Attempt to open the controller
+	//Create array of controllers
 	let mut _controllers: [Option<GameController>; 4] = [None, None, None, None];
 
 	//Init the ttf subsystem
@@ -166,9 +166,16 @@ fn main() {
 	let press_start_text = text_texture("Press Start", &texture_creator, &font);
 	let mut press_start_position: i32 = 150;
 
+	//Round # texture variable
+	let mut round_number_texture = text_texture("Round 0", &texture_creator, &font);
+
 	//Timer variable for making "Press Start" flash
 	let mut press_start_timer = 0;
 	let mut displaying = true;
+
+	//Timer variable for transitioning between rounds
+	let mut round_transition_timer = 0;
+	let mut going_to_next_round = false;
 
 	//Initialize the game state
 	let mut game_state = {
@@ -197,13 +204,16 @@ fn main() {
 		let friendly_projectiles = Vec::new();
 		let enemies = Vec::new();
 
+		let round_number = 0;
+
 		GameState {
 			player,
 			state: State::StartMenu,
 			left_joystick,
 			right_joystick,
 			friendly_projectiles,
-			enemies
+			enemies,
+			round_number
 		}
 	};
 
@@ -303,21 +313,36 @@ fn main() {
 
 				//This will probably become the trigger for advancing rounds
 				if enemies_is_empty {
-					/*
-					let new_enemy = {
-						let position = Vector2 {
-							x: 0.0,
-							y: 30.0
+					if !going_to_next_round {
+						//Start the timer
+						round_transition_timer = ticks;
+
+						//Increment round number
+						game_state.round_number += 1;
+
+						//Create round # texture
+						round_number_texture = text_texture(&format!("Round {}", game_state.round_number), &texture_creator, &font);
+
+						going_to_next_round = true;
+					}
+
+					const INTERVAL: u32 = 2500; //Timer duration in millis
+					if ticks - round_transition_timer > INTERVAL {
+						let new_enemy = {
+							let position = Vector2 {
+								x: 0.0,
+								y: 30.0
+							};
+
+							Spaceship {
+								position
+							}
 						};
 
-						Spaceship {
-							position
-						}
-					};
-
-					//Insert enemy into vec
-					insert_into_option_vec(&mut game_state.enemies, new_enemy);
-					*/
+						//Insert enemy into vec
+						insert_into_option_vec(&mut game_state.enemies, new_enemy);
+						going_to_next_round = false;
+					}
 				}
 
 				//If the right stick is not neutral, fire a projectile
@@ -428,6 +453,11 @@ fn main() {
 						let point = Point::new(p.position.x as i32, p.position.y as i32);
 						canvas.draw_point(point).unwrap();
 					}
+				}
+
+				//Draw the round transition text if necessary
+				if going_to_next_round {
+					draw_centered_text(&mut canvas, &round_number_texture, 0);
 				}
 			}
 		}

@@ -21,7 +21,8 @@ pub struct GameState {
 	pub left_joystick: Vector2<f32>,
 	pub right_joystick: Vector2<f32>,
 	pub friendly_projectiles: Vec<Option<Projectile>>,
-	pub enemies: Vec<Option<Spaceship>>
+	pub enemies: Vec<Option<Spaceship>>,
+	pub round_number: u32
 }
 
 pub enum State {
