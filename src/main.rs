@@ -265,14 +265,6 @@ fn main() {
 					timers[Timers::PressStart as usize].anchor = ticks;
 				}
 
-				/*
-				const INTERVAL: u32 = 500;
-				if ticks - press_start_timer > INTERVAL {
-					displaying = !displaying;
-					press_start_timer = ticks;
-				}
-				*/
-
 				if timers[Timers::PressStart as usize].flag {
 					draw_centered_text(&mut canvas, &press_start_text, press_start_position);
 				}
@@ -329,6 +321,37 @@ fn main() {
 
 				//This will probably become the trigger for advancing rounds
 				if enemies_is_empty {
+					if timers[Timers::Round as usize].flag {
+						//Start the timer
+						timers[Timers::Round as usize].anchor = ticks;
+						timers[Timers::Round as usize].flag = false;
+
+						//Increment round number
+						game_state.round_number += 1;
+
+						//Create round # texture
+						round_number_texture = text_texture(&format!("Round {}", game_state.round_number), &texture_creator, &font);
+					}
+
+					const INTERVAL: u32 = 2500;
+					if ticks - timers[Timers::Round as usize].anchor > INTERVAL {
+						let new_enemy = {
+							let position = Vector2 {
+								x: 0.0,
+								y: 30.0
+							};
+
+							Spaceship {
+								position
+							}
+						};
+
+						//Insert enemy into vec
+						insert_into_option_vec(&mut game_state.enemies, new_enemy);
+						timers[Timers::Round as usize].flag = true;
+					}
+
+					/*
 					if !going_to_next_round {
 						//Start the timer
 						round_transition_timer = ticks;
@@ -359,6 +382,7 @@ fn main() {
 						insert_into_option_vec(&mut game_state.enemies, new_enemy);
 						going_to_next_round = false;
 					}
+					*/
 				}
 
 				//If the right stick is not neutral, fire a projectile
@@ -472,7 +496,7 @@ fn main() {
 				}
 
 				//Draw the round transition text if necessary
-				if going_to_next_round {
+				if !timers[Timers::Round as usize].flag {
 					draw_centered_text(&mut canvas, &round_number_texture, 0);
 				}
 			}
