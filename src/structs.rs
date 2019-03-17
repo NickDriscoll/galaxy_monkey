@@ -15,6 +15,12 @@ pub struct Projectile {
 	pub velocity: Vector2<f32>
 }
 
+#[derive(Copy, Clone)]
+pub struct Timer {
+	pub anchor: u32,
+	pub flag: bool
+}
+
 pub struct GameState {
 	pub player: Spaceship,
 	pub state: State,
@@ -26,6 +32,13 @@ pub struct GameState {
 }
 
 pub enum State {
-	Playing,
-	StartMenu
+	Playing = 1,
+	StartMenu,
+	Length
+}
+
+pub enum Timers {
+	PressStart = 1,
+	Round,
+	Length
 }

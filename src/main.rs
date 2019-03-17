@@ -22,6 +22,8 @@ use crate::structs::Spaceship;
 use crate::structs::Projectile;
 use crate::structs::GameState;
 use crate::structs::State;
+use crate::structs::Timer;
+use crate::structs::Timers;
 
 mod structs;
 //mod subroutines;
@@ -169,6 +171,9 @@ fn main() {
 	//Round # texture variable
 	let mut round_number_texture = text_texture("Round 0", &texture_creator, &font);
 
+	//Create and initialize array of timers
+	let mut timers = [Timer {anchor: 0, flag: true}; Timers::Length as usize];
+
 	//Timer variable for making "Press Start" flash
 	let mut press_start_timer = 0;
 	let mut displaying = true;
@@ -255,12 +260,20 @@ fn main() {
 
 				//Draw press start
 				const INTERVAL: u32 = 500;
+				if ticks - timers[Timers::PressStart as usize].anchor > INTERVAL {
+					timers[Timers::PressStart as usize].flag = !timers[Timers::PressStart as usize].flag;
+					timers[Timers::PressStart as usize].anchor = ticks;
+				}
+
+				/*
+				const INTERVAL: u32 = 500;
 				if ticks - press_start_timer > INTERVAL {
 					displaying = !displaying;
 					press_start_timer = ticks;
 				}
+				*/
 
-				if displaying {
+				if timers[Timers::PressStart as usize].flag {
 					draw_centered_text(&mut canvas, &press_start_text, press_start_position);
 				}
 			}
@@ -463,6 +476,7 @@ fn main() {
 					draw_centered_text(&mut canvas, &round_number_texture, 0);
 				}
 			}
+			State::Length => {}
 		}
 
 		canvas.present();
