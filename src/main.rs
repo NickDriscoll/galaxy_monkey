@@ -106,7 +106,7 @@ fn insert_into_option_vec<T>(optionvec: &mut Vec<Option<T>>, item: T) {
 			index = Some(i);
 		}
 	}
- 
+
 	match index {
 		Some(i) => {
 			optionvec[i] = Some(item);
@@ -232,7 +232,8 @@ fn main() {
 						Event::ControllerButtonDown {button: Button::Back, ..} => {
 							break 'running;
 						}
-						Event::ControllerButtonDown {button: Button::Start, ..} => {
+						Event::ControllerButtonDown {button: Button::Start, ..} |
+						Event::KeyDown {..} => {
 							game_state.state = State::Playing;
 						}
 						Event::JoyDeviceAdded {which: i, ..} => {
@@ -267,7 +268,8 @@ fn main() {
 				//Process events
 				for event in event_pump.poll_iter() {
 					match event {
-						Event::Quit {..} => {
+						Event::Quit {..} |
+						Event::ControllerButtonDown {button: Button::Back, ..} => {
 							break 'running;
 						}
 						Event::JoyDeviceAdded {which: i, ..} => {
@@ -292,11 +294,12 @@ fn main() {
 							game_state.left_joystick = check_deadzone(game_state.left_joystick);
 							game_state.right_joystick = check_deadzone(game_state.right_joystick);
 						}
-						Event::ControllerButtonDown {button: Button::Back, ..} => {
-							break 'running;
-						}
 						Event::KeyDown {keycode: Some(key), ..} => {
-							println!("You just pressed {}", key);
+							match key {
+								_ => {
+									println!("You pressed the unbound key: {}", key);
+								}
+							}
 						}
 						_ => {}
 					}
