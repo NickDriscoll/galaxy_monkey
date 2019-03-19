@@ -32,9 +32,8 @@ pub struct GameState {
 }
 
 pub enum State {
-	Playing = 1,
-	StartMenu,
-	Length
+	Playing,
+	StartMenu
 }
 
 pub enum Timers {

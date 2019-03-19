@@ -172,15 +172,7 @@ fn main() {
 	let mut round_number_texture = text_texture("Round 0", &texture_creator, &font);
 
 	//Create and initialize array of timers
-	let mut timers = [Timer {anchor: 0, flag: true}; Timers::Length as usize];
-
-	//Timer variable for making "Press Start" flash
-	let mut press_start_timer = 0;
-	let mut displaying = true;
-
-	//Timer variable for transitioning between rounds
-	let mut round_transition_timer = 0;
-	let mut going_to_next_round = false;
+	let mut timers = [Timer {anchor: 0, flag: false}; Timers::Length as usize];
 
 	//Initialize the game state
 	let mut game_state = {
@@ -265,7 +257,7 @@ fn main() {
 					timers[Timers::PressStart as usize].anchor = ticks;
 				}
 
-				if timers[Timers::PressStart as usize].flag {
+				if !timers[Timers::PressStart as usize].flag {
 					draw_centered_text(&mut canvas, &press_start_text, press_start_position);
 				}
 			}
@@ -321,10 +313,10 @@ fn main() {
 
 				//This will probably become the trigger for advancing rounds
 				if enemies_is_empty {
-					if timers[Timers::Round as usize].flag {
+					if !timers[Timers::Round as usize].flag {
 						//Start the timer
 						timers[Timers::Round as usize].anchor = ticks;
-						timers[Timers::Round as usize].flag = false;
+						timers[Timers::Round as usize].flag = true;
 
 						//Increment round number
 						game_state.round_number += 1;
@@ -348,41 +340,8 @@ fn main() {
 
 						//Insert enemy into vec
 						insert_into_option_vec(&mut game_state.enemies, new_enemy);
-						timers[Timers::Round as usize].flag = true;
+						timers[Timers::Round as usize].flag = false;
 					}
-
-					/*
-					if !going_to_next_round {
-						//Start the timer
-						round_transition_timer = ticks;
-
-						//Increment round number
-						game_state.round_number += 1;
-
-						//Create round # texture
-						round_number_texture = text_texture(&format!("Round {}", game_state.round_number), &texture_creator, &font);
-
-						going_to_next_round = true;
-					}
-
-					const INTERVAL: u32 = 2500; //Timer duration in millis
-					if ticks - round_transition_timer > INTERVAL {
-						let new_enemy = {
-							let position = Vector2 {
-								x: 0.0,
-								y: 30.0
-							};
-
-							Spaceship {
-								position
-							}
-						};
-
-						//Insert enemy into vec
-						insert_into_option_vec(&mut game_state.enemies, new_enemy);
-						going_to_next_round = false;
-					}
-					*/
 				}
 
 				//If the right stick is not neutral, fire a projectile
@@ -496,11 +455,10 @@ fn main() {
 				}
 
 				//Draw the round transition text if necessary
-				if !timers[Timers::Round as usize].flag {
+				if timers[Timers::Round as usize].flag {
 					draw_centered_text(&mut canvas, &round_number_texture, 0);
 				}
 			}
-			State::Length => {}
 		}
 
 		canvas.present();
